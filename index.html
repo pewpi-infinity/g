@@ -1,124 +1,46 @@
-<script>
-/* ===============================================
-     Infinity G – Page Engine + Wallet Genesis
-   =============================================== */
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8" />
+<title>Tortoise.os – Infinity G Environment</title>
 
-(async function initInfinityG() {
+<!-- Main OS Styles -->
+<link rel="stylesheet" href="../ui/style.css">
+<link rel="stylesheet" href="../ui/terminal.css">
 
-  /* -----------------------------
-       Directory Memory (local)
-     ----------------------------- */
-  const INF_ROOT = "∞-pages";
-  const WALLET = "wallet.json";
+<!-- Core Engine -->
+<script src="engine.js"></script>
+<script src="admin.js"></script>
 
-  // Create directory index if missing
-  if (!localStorage.getItem(INF_ROOT)) {
-    localStorage.setItem(INF_ROOT, JSON.stringify([]));
-  }
+<!-- Core Modules -->
+<script src="../modules/pages.js"></script>
+<script src="../modules/uploader.js"></script>
+<script src="../modules/wallet.js"></script>
+<script src="../modules/watcher.js"></script>
+<script src="../modules/terminal.js"></script>
 
-  /* -----------------------------
-        WALLET GENERATOR
-     ----------------------------- */
-  if (!localStorage.getItem(WALLET)) {
-    const seed = crypto.getRandomValues(new Uint32Array(4)).join("-");
-    const obj = {
-      created: Date.now(),
-      userAgent: navigator.userAgent,
-      ipLocked: false,
-      keys: {
-        public: "∞pub-" + seed,
-        private: "∞prv-" + seed + "-" + btoa(seed)
-      },
-      watcher: {
-        active: true,
-        note: "Your shadow-body that remembers everything you ask it to.",
-        records: []
-      }
-    };
-    localStorage.setItem(WALLET, JSON.stringify(obj));
-  }
+</head>
+<body>
 
-  /* -----------------------------
-      PAGE CREATION ENGINE
-     ----------------------------- */
-  function createPage(name, html) {
-    const idx = JSON.parse(localStorage.getItem(INF_ROOT));
-    if (!idx.includes(name)) {
-      idx.push(name);
-      localStorage.setItem(INF_ROOT, JSON.stringify(idx));
-    }
-    localStorage.setItem("pg-" + name, html);
-    refreshMenu();
-  }
+<!-- ========================
+        TORTOISE.OS BOOT
+========================= -->
 
-  /* -----------------------------
-      ROUTER
-     ----------------------------- */
-  function openPage(name) {
-    const body = localStorage.getItem("pg-" + name);
-    if (!body) return alert("Page missing.");
-    document.querySelector("#inf-main").innerHTML = body;
-  }
+<div id="os-container">
 
-  /* -----------------------------
-      MENU RENDERER
-     ----------------------------- */
-  function refreshMenu() {
-    const idx = JSON.parse(localStorage.getItem(INF_ROOT));
-    const menu = document.querySelector("#inf-menu");
-    menu.innerHTML = "";
-    idx.forEach(name => {
-      const btn = document.createElement("button");
-      btn.textContent = name;
-      btn.onclick = () => openPage(name);
-      btn.className = "inf-btn";
-      menu.appendChild(btn);
-    });
-  }
+    <div id="os-header">
+        <h1>Tortoise.os</h1>
+        <span class="sub">Infinity G Hybrid Operating Shell</span>
+    </div>
 
-  /* -----------------------------
-      WATCHER LOGGING
-     ----------------------------- */
-  window.infNote = function(msg) {
-    const w = JSON.parse(localStorage.getItem(WALLET));
-    w.watcher.records.push({
-      t: Date.now(),
-      message: msg
-    });
-    localStorage.setItem(WALLET, JSON.stringify(w));
-  };
+    <div id="os-main">
+        <!-- Dynamic OS Content Gets Injected Here by engine.js -->
+    </div>
 
-  /* -----------------------------
-      INIT UI
-     ----------------------------- */
-  document.querySelector("#inf-create").onclick = () => {
-    const name = prompt("Name your new page:");
-    if (!name) return;
-    createPage(name, `<h2>${name}</h2><p>This page is empty. Add content via terminal soon.</p>`);
-    infNote("Created page: " + name);
-    alert("Page created: " + name);
-  };
+    <!-- Always-Visible Terminal -->
+    <div id="os-terminal"></div>
 
-  refreshMenu();
-})();
-</script>
-
-<!-- ===========================
-     BASIC UI PANEL
-   =========================== -->
-<style>
-  #inf-shell {padding:20px;background:#111;color:#eee;
-    border-top:1px solid #333;margin-top:20px;}
-  #inf-menu {display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;}
-  .inf-btn {background:#333;color:#9ff;border:1px solid #4af;
-    padding:8px 12px;border-radius:8px;cursor:pointer;}
-  #inf-main{padding:20px;background:#0002;border-radius:12px;
-    border:1px solid #333;min-height:200px;}
-</style>
-
-<div id="inf-shell">
-  <h3>Infinity G – Page Engine</h3>
-  <div id="inf-menu"></div>
-  <button id="inf-create" class="inf-btn">+ New Page</button>
-  <div id="inf-main"></div>
 </div>
+
+</body>
+</html>
