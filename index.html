@@ -1,117 +1,124 @@
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8" />
-<title>Infinity G1 – Single File Hub</title>
-
-<style>
-body { background:#111; color:#eee; font-family:Arial; margin:0; padding:20px; }
-h1 { margin-top:0; font-size:26px; }
-.box { background:#222; padding:15px; margin:20px 0; border-radius:8px; }
-button { background:#0af; color:#000; padding:10px 16px; border:none; border-radius:6px; font-weight:bold; cursor:pointer; }
-#log { background:#000; padding:10px; border-radius:8px; white-space:pre-wrap; margin-top:20px; }
-a { color:#0af; display:block; margin:6px 0; text-decoration:none; }
-</style>
-
-</head>
-<body>
-
-<h1>Infinity Hub – G1</h1>
-<p>This is your active G1 page. It generates new pages inside the repo automatically.</p>
-
-<div class="box">
-  <h3>Upload New Pages</h3>
-  <input type="file" id="fileInput" multiple>
-  <button onclick="uploadFiles()">Upload</button>
-  <button onclick="saveState()">Save</button>
-</div>
-
-<h3>Generated Pages</h3>
-<div id="pagesList"></div>
-
-<pre id="log"></pre>
-
 <script>
-// BASIC CONFIG FOR YOUR REPO
-const user = "pewpi-infinity";
-const repo = "g";
-const token = "";  // leave blank for public pushes
-const api = `https://api.github.com/repos/${user}/${repo}/contents/`;
+/* ===============================================
+     Infinity G – Page Engine + Wallet Genesis
+   =============================================== */
 
-// Write text into the log box
-function log(msg){
-  document.getElementById("log").textContent += msg + "\\n";
-}
+(async function initInfinityG() {
 
-// Load the /pages folder and display links
-async function loadPages(){
-  let res = await fetch(api + "pages");
-  if(!res.ok){ log("No pages yet."); return; }
+  /* -----------------------------
+       Directory Memory (local)
+     ----------------------------- */
+  const INF_ROOT = "∞-pages";
+  const WALLET = "wallet.json";
 
-  let files = await res.json();
-  let out = document.getElementById("pagesList");
-  out.innerHTML = "";
-
-  files.forEach(f=>{
-    let a = document.createElement("a");
-    a.href = "pages/" + f.name;
-    a.textContent = f.name;
-    a.target = "_blank";
-    out.appendChild(a);
-  });
-}
-
-// Upload page files
-async function uploadFiles(){
-  let files = document.getElementById("fileInput").files;
-  for(let f of files){
-    let txt = await f.text();
-    let encoded = btoa(unescape(encodeURIComponent(txt)));
-    let path = "pages/" + f.name;
-
-    let res = await fetch(api + path, {
-      method: "PUT",
-      headers: {
-        "Authorization": token ? `token ${token}` : undefined,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        message: "Add " + f.name,
-        content: encoded
-      })
-    });
-
-    if(res.ok) log("Uploaded: " + f.name);
-    else log("FAILED: " + f.name);
+  // Create directory index if missing
+  if (!localStorage.getItem(INF_ROOT)) {
+    localStorage.setItem(INF_ROOT, JSON.stringify([]));
   }
-  loadPages();
-}
 
-// Save state.txt watcher file
-async function saveState(){
-  let data = "saved=" + Date.now();
-  let encoded = btoa(unescape(encodeURIComponent(data)));
-  let path = "state.txt";
+  /* -----------------------------
+        WALLET GENERATOR
+     ----------------------------- */
+  if (!localStorage.getItem(WALLET)) {
+    const seed = crypto.getRandomValues(new Uint32Array(4)).join("-");
+    const obj = {
+      created: Date.now(),
+      userAgent: navigator.userAgent,
+      ipLocked: false,
+      keys: {
+        public: "∞pub-" + seed,
+        private: "∞prv-" + seed + "-" + btoa(seed)
+      },
+      watcher: {
+        active: true,
+        note: "Your shadow-body that remembers everything you ask it to.",
+        records: []
+      }
+    };
+    localStorage.setItem(WALLET, JSON.stringify(obj));
+  }
 
-  let existing = await fetch(api + path);
-  let sha = existing.ok ? (await existing.json()).sha : null;
+  /* -----------------------------
+      PAGE CREATION ENGINE
+     ----------------------------- */
+  function createPage(name, html) {
+    const idx = JSON.parse(localStorage.getItem(INF_ROOT));
+    if (!idx.includes(name)) {
+      idx.push(name);
+      localStorage.setItem(INF_ROOT, JSON.stringify(idx));
+    }
+    localStorage.setItem("pg-" + name, html);
+    refreshMenu();
+  }
 
-  let res = await fetch(api + path, {
-    method: "PUT",
-    headers: { "Authorization": token ? `token ${token}` : undefined },
-    body: JSON.stringify({
-      message: "State updated",
-      content: encoded,
-      sha
-    })
-  });
+  /* -----------------------------
+      ROUTER
+     ----------------------------- */
+  function openPage(name) {
+    const body = localStorage.getItem("pg-" + name);
+    if (!body) return alert("Page missing.");
+    document.querySelector("#inf-main").innerHTML = body;
+  }
 
-  if(res.ok) log("State saved.");
-  else log("State FAILED.");
-}
+  /* -----------------------------
+      MENU RENDERER
+     ----------------------------- */
+  function refreshMenu() {
+    const idx = JSON.parse(localStorage.getItem(INF_ROOT));
+    const menu = document.querySelector("#inf-menu");
+    menu.innerHTML = "";
+    idx.forEach(name => {
+      const btn = document.createElement("button");
+      btn.textContent = name;
+      btn.onclick = () => openPage(name);
+      btn.className = "inf-btn";
+      menu.appendChild(btn);
+    });
+  }
 
-loadPages();
+  /* -----------------------------
+      WATCHER LOGGING
+     ----------------------------- */
+  window.infNote = function(msg) {
+    const w = JSON.parse(localStorage.getItem(WALLET));
+    w.watcher.records.push({
+      t: Date.now(),
+      message: msg
+    });
+    localStorage.setItem(WALLET, JSON.stringify(w));
+  };
+
+  /* -----------------------------
+      INIT UI
+     ----------------------------- */
+  document.querySelector("#inf-create").onclick = () => {
+    const name = prompt("Name your new page:");
+    if (!name) return;
+    createPage(name, `<h2>${name}</h2><p>This page is empty. Add content via terminal soon.</p>`);
+    infNote("Created page: " + name);
+    alert("Page created: " + name);
+  };
+
+  refreshMenu();
+})();
 </script>
 
-</body>
-</html>
+<!-- ===========================
+     BASIC UI PANEL
+   =========================== -->
+<style>
+  #inf-shell {padding:20px;background:#111;color:#eee;
+    border-top:1px solid #333;margin-top:20px;}
+  #inf-menu {display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;}
+  .inf-btn {background:#333;color:#9ff;border:1px solid #4af;
+    padding:8px 12px;border-radius:8px;cursor:pointer;}
+  #inf-main{padding:20px;background:#0002;border-radius:12px;
+    border:1px solid #333;min-height:200px;}
+</style>
+
+<div id="inf-shell">
+  <h3>Infinity G – Page Engine</h3>
+  <div id="inf-menu"></div>
+  <button id="inf-create" class="inf-btn">+ New Page</button>
+  <div id="inf-main"></div>
+</div>
